@@ -1,0 +1,36 @@
+\begin{SCfigure}[12][htbp]
+    \centering
+    \begin{tikzpicture}[shorten >=1pt]
+        \tikzstyle{unit}=[draw,shape=circle,minimum size=1cm]
+        \node[unit](x1) at (0,3.5){};
+        \node[unit](x2) at (0,2){};
+        \node[unit](x3) at (0,0){};
+        \node[unit](P1) at (4,3.5){};
+        \node[unit](P2) at (4,2){};
+        \node[unit](P3) at (4,0){};
+        \node[unit](y1) at (8,3.5){};
+        \node[unit](y2) at (8,2){};
+        \node[unit](y3) at (8,0){};
+        
+        \draw[->] (x1) -- (P1);
+        \draw[->] (x1) -- (P2);
+        \draw[->] (x1) -- (P3);
+        \draw[->] (x2) -- (P1);
+        \draw[->] (x2) -- (P2);
+        \draw[->] (x2) -- (P3);
+        \draw[->] (x3) -- (P1);
+        \draw[->] (x3) -- (P2);
+        \draw[->] (x3) -- (P3);
+        \draw[->] (P1) -- (y1);
+        \draw[->] (P2) -- (y2);
+        \draw[->] (P3) -- (y3);
+        \draw[->] (P1) -- (y3);
+        \draw[->] (P2) -- (y1);
+        \draw[->] (P3) -- (y2);
+        \draw[->] (P1) -- (y2);
+        \draw[->] (P2) -- (y3);
+        \draw[->] (P3) -- (y1);
+        
+        \label{fig:perceptron0}
+    \end{tikzpicture}
+\end{SCfigure}  
