@@ -1,0 +1,21 @@
+DNA = {
+    'adenin': 'NC1=NC=NC2=C1N=CN2',
+    'guanin': 'C1=NC2=C(N1)C(=O)NC(=N2)N',
+    'thymine': 'O=C1NC(=O)NC=C1C',
+    'cytosine': 'O=C1Nccc(N)n1'
+}
+
+adenin_mol = rdkit.Chem.MolFromSmiles(DNA['adenin'])
+guanin_mol = rdkit.Chem.MolFromSmiles(DNA['guanin'])
+thymine_mol = rdkit.Chem.MolFromSmiles(DNA['thymine'])
+cytosine_mol = rdkit.Chem.MolFromSmiles(DNA['cytosine'])
+DNA_molecules = [adenin_mol, guanin_mol, thymine_mol, cytosine_mol]
+DNA_coulomb_matrix = []
+coulomb_matrix = dc.feat.CoulombMatrix(max_atoms = 17)
+
+
+for i in range(len(DNA_molecules)):
+    coulomb_matrix = dc.feat.CoulombMatrix(max_atoms = 17)
+    DNA_coulomb_matrix.append(coulomb_matrix(DNA_molecules[i])[0])
+DNA_coulomb_matrices = np.array(DNA_coulomb_matrix)
+print(DNA_coulomb_matrices[0])
