@@ -1,0 +1,135 @@
+!pip install --pre deepchem
+import deepchem as dc
+dc.__version__
+import numpy as np
+import pandas as pd
+!conda --version
+!conda install -y -c rdkit rdkit 
+import rdkit
+featurizers = dc.feat.CoulombMatrix(max_atoms=23)
+splitter = "random"
+tasks, datasets, transformers = dc.molnet.load_qm9(featurizer = dc.feat.CoulombMatrix(max_atoms=23), splitter = "random")
+train_dataset, test_dataset, valid_dataset = datasets
+train_dataset_y = pd.DataFrame(train_dataset.y, columns = tasks)
+dipole_traindataset = dc.data.DiskDataset.create_dataset([[np.asarray(train_dataset.X), np.asarray(train_dataset_y.iloc[:, [0]]),np.asarray(train_dataset.w), np.asarray(train_dataset.ids)]], tasks = ["dipole"])
+polarization_traindataset = dc.data.DiskDataset.create_dataset([[np.asarray(train_dataset.X), np.asarray(train_dataset_y.iloc[:, [1]]), np.asarray(train_dataset.w), np.asarray(train_dataset.ids)]], tasks = ["isotropic polarizability"])
+u0_traindataset = dc.data.DiskDataset.create_dataset([[np.asarray(train_dataset.X), np.asarray(train_dataset_y.iloc[:, [8]]), np.asarray(train_dataset.w), np.asarray(train_dataset.ids)]], tasks = ["u0"])
+test_dataset_y = pd.DataFrame(test_dataset.y, columns = tasks)
+dipole_testdataset = dc.data.DiskDataset.create_dataset([[np.asarray(test_dataset.X), np.asarray(test_dataset_y.iloc[:, [0]]),np.asarray(test_dataset.w), np.asarray(test_dataset.ids)]], tasks = ["dipole"])
+polarization_testdataset = dc.data.DiskDataset.create_dataset([[np.asarray(test_dataset.X), np.asarray(test_dataset_y.iloc[:, [1]]), np.asarray(test_dataset.w), np.asarray(test_dataset.ids)]], tasks = ["isotropic polarizability"])
+u0_testdataset = dc.data.DiskDataset.create_dataset([[np.asarray(test_dataset.X), np.asarray(test_dataset_y.iloc[:, [8]]), np.asarray(test_dataset.w), np.asarray(test_dataset.ids)]], tasks = ["u0"])
+valid_dataset_y = pd.DataFrame(valid_dataset.y, columns = tasks)
+dipole_validdataset = dc.data.DiskDataset.create_dataset([[np.asarray(valid_dataset.X), np.asarray(valid_dataset_y.iloc[:, [0]]),np.asarray(valid_dataset.w), np.asarray(valid_dataset.ids)]], tasks = ["dipole"])
+polarization_validdataset = dc.data.DiskDataset.create_dataset([[np.asarray(valid_dataset.X), np.asarray(valid_dataset_y.iloc[:, [1]]), np.asarray(valid_dataset.w), np.asarray(valid_dataset.ids)]], tasks = ["isotropic polarizability"])
+u0_validdataset = dc.data.DiskDataset.create_dataset([[np.asarray(valid_dataset.X), np.asarray(valid_dataset_y.iloc[:, [8]]), np.asarray(valid_dataset.w), np.asarray(valid_dataset.ids)]], tasks = ["u0"])
+model = dc.models.DTNNModel(len(train_dataset.tasks), 
+                            learning_rate = 0.001, 
+                            dropout=0.1,
+                            n_embedding=20, 
+                            n_hidden=15, 
+                            n_distance=51, 
+                            distance_min=-1, 
+                            distance_max=18)
+model.fit(train_dataset, nb_epoch = 50)
+
+metric = [dc.metrics.Metric(dc.metrics.mean_absolute_error, mode="regression"), dc.metrics.Metric(dc.metrics.pearson_r2_score, mode="regression")]
+train_dataset_score = model.evaluate(train_dataset, metric)
+train_dataset_score = model.evaluate(test_dataset, metric)
+metric = [dc.metrics.Metric(dc.metrics.mean_absolute_error, mode="regression"), dc.metrics.Metric(dc.metrics.pearson_r2_score, mode="regression")]
+train_dataset_score = model.evaluate(train_dataset, metric)
+test_dataset_score = model.evaluate(test_dataset, metric)
+DNA = {
+    'adenin': 'NC1=NC=NC2=C1N=CN2',
+    'guanin': 'C1=NC2=C(N1)C(=O)NC(=N2)N',
+    'thymine': 'O=C1NC(=O)NC=C1C',
+    'cytosine': 'O=C1Nccc(N)n1'
+}
+
+adenin_mol = rdkit.Chem.MolFromSmiles(DNA['adenin'])
+guanin_mol = rdkit.Chem.MolFromSmiles(DNA['guanin'])
+thymine_mol = rdkit.Chem.MolFromSmiles(DNA['thymine'])
+cytosine_mol = rdkit.Chem.MolFromSmiles(DNA['cytosine'])
+DNA_molecules = [adenin_mol, guanin_mol, thymine_mol, cytosine_mol]
+DNA_coulomb_matrix = []
+coulomb_matrix = dc.feat.CoulombMatrix(max_atoms = 17)
+for i in range(len(DNA_molecules)):
+    DNA_coulomb_matrix.append(coulomb_matrix(DNA_molecules[i])[0])
+DNA_coulomb_matrices = np.array(DNA_coulomb_matrix)
+#print(DNA_coulomb_matrices)
+predictions_dipole = model_dipole.predict_on_batch(DNA_coulomb_matrices)
+predictions_polarization = model_polarization.predict_on_batch(DNA_coulomb_matrices)
+predictions_u0 = model_u0.predict_on_batch(DNA_coulomb_matrices)
+print(predictions_dipole)
+print(predictions_polarization)
+print(predictions_u0)
+pd_predictions = pd.DataFrame(predictions, columns = tasks)
+print(pd_predictions)
+dipole_moment_DNA = np.asarray(pd_predictions.iloc[:, [0]])
+polarization_DNA = np.asarray(pd_predictions.iloc[:, [1]])
+u0_DNA = np.asarray(pd_predictions.iloc[:, [8]])
+normalFloat_vec = np.vectorize("{:.50f}".format)
+DATA_DNA =[normalFloat_vec(dipole_moment_DNA), normalFloat_vec(polarization_DNA), normalFloat_vec(u0_DNA)]
+print(DATA_DNA)
+dipole = []
+polarization = []
+u0 = []
+dipole_true = []
+polarization_true = []
+u0_true = []
+
+prediction = model.predict(train_dataset, transformers)
+predictionpd = pd.DataFrame(prediction)
+dipole = np.asarray(predictionpd.iloc[:, [0]])
+polarization = np.asarray(predictionpd.iloc[:, [1]])
+u0 = np.asarray(predictionpd.iloc[:, [8]])
+
+error_dipole = dc.metrics.mean_absolute_error(y_true = dipole_traindataset.y, y_pred = dipole)
+error_polarization = dc.metrics.mean_absolute_error(y_true = polarization_traindataset.y, y_pred = polarization)
+error_u0 = dc.metrics.mean_absolute_error(y_true = u0_traindataset.y, y_pred = u0)
+print('dipole training set score for general model:', "{:.50f}".format(error_dipole))
+print('polarization training set score for general model:', "{:.50f}".format(error_polarization))
+print('u0 training set score for general model:', "{:.50f}".format(error_u0))
+
+polarization = []
+polarization_true = []
+for i in range(len(prediction)):
+    dipole.append(prediction[i,0])
+    polarization.append(prediction[i,1])
+    u0.append(prediction[i,8])
+    dipole_true.append(train_dataset.y[i,0])
+    polarization_true.append(train_dataset.y[i,1])
+    u0.append(train_dataset.y[i,8])
+
+error_dipole = dc.metrics.mean_absolute_error(y_true = dipole_true, y_pred = dipole)
+error_polarization = dc.metrics.mean_absolute_error(y_true = polarization_true, y_pred = polarization)
+error_u0 = dc.metric.mean_absolute_error(y_true = u0_true, y_pred = u0)
+print('dipole training set score for general model:', "{:.50f}".format(error_dipole))
+print('polarization training set score for general model:', "{:.50f}".format(error_polarization))
+print('u0 training set score for general model:', "{:.50f}".format(error_u0))
+
+model_dipole = dc.models.DTNNModel(len(dipole_traindataset.tasks),
+                                   dropout=0.1,
+                                   learning_rate = 0.0001)
+model_dipole.fit(dipole_traindataset,nb_epoch =50)
+train_prediction_dipole = model_dipole.predict(dipole_traindataset)
+test_prediction_dipole = model_dipole.predict(dipole_testdataset)
+print('dipole model mean absolute error for train dataset: ', dc.metrics.mean_absolute_error(y_true = dipole_traindataset.y, y_pred = train_prediction_dipole))
+print('dipole model mean absolute error for test dataset: ', dc.metrics.mean_absolute_error(y_true = dipole_testdataset.y, y_pred = test_prediction_dipole))
+
+model_polarization = dc.models.DTNNModel(len(polarization_traindataset.tasks),
+                                   learning_rate = 0.0001, 
+                                   dropout=0.1)
+model_polarization.fit(polarization_traindataset,nb_epoch =50)
+train_prediction_polarization = model_polarization.predict(polarization_traindataset)
+test_prediction_polarization = model_polarization.predict(polarization_testdataset)
+print('polarization model mean absolute error for train dataset: ', dc.metrics.mean_absolute_error(y_true = polarization_traindataset.y, y_pred = train_prediction_polarization))
+print('polarization model mean absolute error for test dataset: ', dc.metrics.mean_absolute_error(y_true = polarization_testdataset.y, y_pred = test_prediction_polarization))
+
+model_u0 = dc.models.DTNNModel(len(u0_traindataset.tasks),
+                                   learning_rate = 0.0001, 
+                                   dropout=0.1)
+model_u0.fit(u0_traindataset,nb_epoch =50)
+train_prediction_u0 = model_u0.predict(u0_traindataset)
+test_prediction_u0 = model_u0.predict(u0_testdataset)
+print('u0 model mean absolute error for train dataset: ', dc.metrics.mean_absolute_error(y_true = u0_traindataset.y, y_pred = train_prediction_u0))
+print('u0 model mean absolute error for test dataset: ', dc.metrics.mean_absolute_error(y_true = u0_testdataset.y, y_pred = test_prediction_u0))
